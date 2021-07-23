@@ -34,7 +34,7 @@ jobs:
       - name: Setting up packages
         run: |
           sudo apt update
-          sudo apt install plantuml font-noto-cjk
+          sudo apt install plantuml fonts-noto-cjk
       - name: Configuring Git
         run: |
           git config --local user.name shinobe179
