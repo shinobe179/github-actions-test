@@ -1,0 +1,51 @@
+name: Generate PlantUML Diagrams
+on:
+  push:
+    paths:
+      - '**.puml'
+    branches:
+      - '**'
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source 
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Get changed UML files
+        id: getfile
+        run: |
+          git diff-tree -r --no-commit-id --summary ${{ github.sha }} \
+          | awk -F' ' '{
+            # ensure we are not trying to process deleted files
+            # only process puml files
+            # do not try to process our theme or custom config
+            if ( $1 !~ /^delete$/ && $4 ~ /\.puml$/ && $4 !~ /(theme|config)\.puml$/ )
+            {
+              # only print the file name and strip newlines for spaces
+              printf "::set-output name=files::" "%s ", $4
+            }
+          }
+          END { print "" } # ensure we do print a newline at the end
+          '
+      - name: Setting up packages
+        run: |
+          sudo apt update
+          sudo apt install plantuml font-mono-cjk
+      - name: Configuring Git
+        run: |
+          git config --local user.name shinobe179
+          git config --local user.email befs.anne@gmail.com
+      - name: UML files considered echo output
+        run: |
+          echo ${{ steps.getfile.outputs.files }}
+      - name: Generate PNG Diagrams
+        run: |
+          plantuml ${{ steps.getfile.outputs.files }} -charset UTF-8
+      - name: Push Local Changes
+        run: |
+          export file_name=$(echo ${{ steps.getfile.outputs.files }} | sed -e 's/.puml/.png/')
+          git add ${file_name}
+          git commit -m "Automatically add png file made from PlantUML file ${{ steps.getfile.outputs.files }}."
+          git push origin ${{ github.head_ref }}
